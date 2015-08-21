@@ -611,6 +611,7 @@ enum {
 #define EXT4_IOC_SET_ENCRYPTION_POLICY	_IOR('f', 19, struct ext4_encryption_policy)
 #define EXT4_IOC_GET_ENCRYPTION_PWSALT	_IOW('f', 20, __u8[16])
 #define EXT4_IOC_GET_ENCRYPTION_POLICY	_IOW('f', 21, struct ext4_encryption_policy)
+#define EXT4_IOC_UNRM 			_IO('f', 22)
 
 #if defined(__KERNEL__) && defined(CONFIG_COMPAT)
 /*
@@ -1266,6 +1267,12 @@ struct ext4_sb_info {
 	u32 s_max_batch_time;
 	u32 s_min_batch_time;
 	struct block_device *journal_bdev;
+
+#ifdef CONFIG_EXT4_UNRM
+	struct radix_tree_root s_unrm;
+	struct workqueue_struct *unrm_wq;
+#endif
+
 #ifdef CONFIG_QUOTA
 	char *s_qf_names[EXT4_MAXQUOTAS];	/* Names of quota files with journalled quota */
 	int s_jquota_fmt;			/* Format of quota to use */
@@ -3044,6 +3051,33 @@ extern struct mutex ext4__aio_mutex[EXT4_WQ_HASH_SZ];
 #define EXT4_RESIZING	0
 extern int ext4_resize_begin(struct super_block *sb);
 extern void ext4_resize_end(struct super_block *sb);
+
+#ifdef CONFIG_EXT4_UNRM
+extern struct kmem_cache *ext4_unrm_node_cachep;
+
+struct ext4_unrm_node {
+	struct list_head list;
+	struct inode *inode;
+	struct inode *dir;
+	struct dentry *dentry;
+	struct delayed_work work;
+	struct radix_tree_root *s_unrm;
+	struct list_head *dirlist;
+	bool is_dir;
+};
+
+extern void ext4_unrm_prune(struct work_struct *work);
+extern void ext4_unrm_init(struct ext4_sb_info *sbi);
+extern void destroy_unrm_node_cache(void);
+extern int ext4_unrm_save(struct inode *dir, struct dentry *dentry,
+			  bool follow);
+extern int init_unrm_node_cache(void);
+extern int ext4_do_unrm(struct super_block *sb, struct inode *dir);
+extern void ext4_unrm_finish_rmdir(handle_t *handle, struct inode *dir,
+				   struct inode *inode);
+extern void ext4_unrm_finish_unlink(handle_t *handle, struct inode *inode);
+extern void ext4_unrm_cleanup(struct ext4_sb_info *sbi);
+#endif
 
 #endif	/* __KERNEL__ */
 

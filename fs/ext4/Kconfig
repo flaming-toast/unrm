@@ -87,6 +87,15 @@ config EXT4_FS_ENCRYPTION
 	default y
 	depends on EXT4_ENCRYPTION
 
+config EXT4_UNRM
+	bool "Ext4 undo rm"
+	default n
+	depends on EXT4_FS
+	help
+	   Enable undo rm on ext4. Restore files removed by rm
+	   under a certain directory before a set period of time.
+	   Use with caution!
+
 config EXT4_DEBUG
 	bool "EXT4 debugging support"
 	depends on EXT4_FS

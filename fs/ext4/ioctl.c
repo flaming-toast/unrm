@@ -694,6 +694,19 @@ encryption_policy_out:
 		return -EOPNOTSUPP;
 #endif
 	}
+	case EXT4_IOC_UNRM: {
+#ifdef CONFIG_EXT4_UNRM
+		int err;
+		struct inode *dir;
+
+		dir = inode;
+		err = ext4_do_unrm(sb, dir);
+		return err;
+#else
+		return -EOPNOTSUPP;
+#endif
+						}
+
 	default:
 		return -ENOTTY;
 	}

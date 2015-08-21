@@ -779,6 +779,9 @@ static void ext4_put_super(struct super_block *sb)
 
 	flush_workqueue(sbi->rsv_conversion_wq);
 	destroy_workqueue(sbi->rsv_conversion_wq);
+#ifdef CONFIG_EXT4_UNRM
+	ext4_unrm_cleanup(sbi);
+#endif
 
 	if (sbi->s_journal) {
 		err = jbd2_journal_destroy(sbi->s_journal);
@@ -4000,6 +4003,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 #endif
 	memcpy(sb->s_uuid, es->s_uuid, sizeof(es->s_uuid));
 
+#ifdef CONFIG_EXT4_UNRM
+	ext4_unrm_init(sbi);
+#endif
+
 	INIT_LIST_HEAD(&sbi->s_orphan); /* unlinked but open files */
 	mutex_init(&sbi->s_orphan_lock);
 
@@ -5651,6 +5658,11 @@ static int __init ext4_init_fs(void)
 	err = init_inodecache();
 	if (err)
 		goto out1;
+#ifdef CONFIG_EXT4_UNRM
+	err = init_unrm_node_cache();
+	if (err)
+		goto unrm;
+#endif
 	register_as_ext3();
 	register_as_ext2();
 	err = register_filesystem(&ext4_fs_type);
@@ -5662,6 +5674,10 @@ out:
 	unregister_as_ext2();
 	unregister_as_ext3();
 	destroy_inodecache();
+#ifdef CONFIG_EXT4_UNRM
+unrm:
+	destroy_unrm_node_cache();
+#endif
 out1:
 	ext4_mballoc_ready = 0;
 	ext4_exit_mballoc();

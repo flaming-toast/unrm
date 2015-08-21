@@ -2058,7 +2058,7 @@ out_frames:
  * may not sleep between calling this and putting something into
  * the entry, as someone else might have used it while you slept.
  */
-static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+int ext4_add_entry(handle_t *handle, struct dentry *dentry,
 			  struct inode *inode)
 {
 	struct inode *dir = d_inode(dentry->d_parent);
@@ -2381,7 +2381,7 @@ out:
  * DIR_NLINK feature is set if 1) nlinks > EXT4_LINK_MAX or 2) nlinks == 2,
  * since this indicates that nlinks count was previously 1.
  */
-static void ext4_inc_count(handle_t *handle, struct inode *inode)
+void ext4_inc_count(handle_t *handle, struct inode *inode)
 {
 	inc_nlink(inode);
 	if (is_dx(inode) && inode->i_nlink > 1) {
@@ -2398,7 +2398,7 @@ static void ext4_inc_count(handle_t *handle, struct inode *inode)
  * If a directory had nlink == 1, then we should let it be 1. This indicates
  * directory has >EXT4_LINK_MAX subdirs.
  */
-static void ext4_dec_count(handle_t *handle, struct inode *inode)
+void ext4_dec_count(handle_t *handle, struct inode *inode)
 {
 	if (!S_ISDIR(inode->i_mode) || inode->i_nlink > 2)
 		drop_nlink(inode);
@@ -2944,6 +2944,10 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
 	retval = ext4_delete_entry(handle, dir, de, bh);
 	if (retval)
 		goto end_rmdir;
+#ifdef CONFIG_EXT4_UNRM
+	retval = ext4_unrm_save(dir, dentry, true);
+	goto end_rmdir;
+#endif
 	if (!EXT4_DIR_LINK_EMPTY(inode))
 		ext4_warning_inode(inode,
 			     "empty directory '%.*s' has too many links (%u)",
@@ -3018,6 +3022,10 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
 	dir->i_ctime = dir->i_mtime = ext4_current_time(dir);
 	ext4_update_dx_flag(dir);
 	ext4_mark_inode_dirty(handle, dir);
+#ifdef CONFIG_EXT4_UNRM
+	retval = ext4_unrm_save(dir, dentry, false);
+	goto end_unlink;
+#endif
 	drop_nlink(inode);
 	if (!inode->i_nlink)
 		ext4_orphan_add(handle, inode);
